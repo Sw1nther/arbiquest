@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://sw1nther.github.io/arbiquest/sitemap.xml
