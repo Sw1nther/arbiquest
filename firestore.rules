@@ -1,0 +1,145 @@
+rules_version = '2';
+// ArbiQuest v8.91 — Firestore rules. Paste into Firebase Console → Firestore Database → Rules → Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    // Identity is bootstrapped ONLY in Firebase Console. Nickname, role or dev flags never grant ownership.
+    function isOwner() {
+      return signedIn() && exists(/databases/$(database)/documents/adminIdentity/owner)
+        && get(/databases/$(database)/documents/adminIdentity/owner).data.uid == request.auth.uid
+        && (!('email' in get(/databases/$(database)/documents/adminIdentity/owner).data)
+          || (request.auth.token.email_verified == true && request.auth.token.email == get(/databases/$(database)/documents/adminIdentity/owner).data.email));
+    }
+    function blocked(uid) {
+      return exists(/databases/$(database)/documents/moderation/$(uid))
+        && get(/databases/$(database)/documents/moderation/$(uid)).data.blocked == true;
+    }
+    function available() {
+      return !exists(/databases/$(database)/documents/siteConfig/global)
+        || get(/databases/$(database)/documents/siteConfig/global).data.maintenance == false;
+    }
+    function communityOn() {
+      return !exists(/databases/$(database)/documents/siteConfig/global)
+        || get(/databases/$(database)/documents/siteConfig/global).data.features.community == true;
+    }
+    function canWrite() { return signedIn() && (isOwner() || (!blocked(request.auth.uid) && available())); }
+    function isMe(uid) { return signedIn() && request.auth.uid == uid; }
+    function str(v, max) { return v is string && v.size() <= max; }
+    function num(v) { return v is int || v is float; }
+
+    // Private full progress
+    match /users/{uid} {
+      allow read: if isMe(uid) || isOwner();
+      allow delete: if isMe(uid) && canWrite();
+      allow create, update: if isMe(uid) && canWrite()
+        && request.resource.data.state is string && request.resource.data.state.size() < 950000;
+    }
+
+    // Public profile visible to friends
+    match /publicProfiles/{uid} {
+      allow read: if signedIn();
+      allow delete: if isMe(uid) && canWrite() && (isOwner() || communityOn());
+      allow create, update: if isMe(uid) && canWrite() && (isOwner() || communityOn())
+        && request.resource.data.keys().hasOnly(['nick','name','bio','avatar','title','theme','frame','pet','xp','level','coins','lessonsDone','streak','streakMax','active','quizC','quizT','ach','updatedAt','act','loc','lastAction','lastSeen','createdAt'])
+        && str(request.resource.data.nick, 40) && request.resource.data.nick.size() > 0
+        && str(request.resource.data.name, 40) && str(request.resource.data.bio, 200)
+        && str(request.resource.data.avatar, 100000)
+        && str(request.resource.data.title, 60) && str(request.resource.data.theme, 20)
+        && str(request.resource.data.frame, 30) && str(request.resource.data.pet, 30)
+        && str(request.resource.data.level, 40)
+        && num(request.resource.data.xp) && request.resource.data.xp >= 0 && request.resource.data.xp < 10000000
+        && num(request.resource.data.coins) && num(request.resource.data.lessonsDone) && request.resource.data.lessonsDone <= 500
+        && num(request.resource.data.streak) && num(request.resource.data.streakMax) && num(request.resource.data.active)
+        && num(request.resource.data.quizC) && num(request.resource.data.quizT)
+        && request.resource.data.ach is list && request.resource.data.ach.size() <= 300
+        && num(request.resource.data.updatedAt)
+        && (!('lastAction' in request.resource.data) || str(request.resource.data.lastAction, 100))
+        && (!('lastSeen' in request.resource.data) || num(request.resource.data.lastSeen))
+        && (!('loc' in request.resource.data) || str(request.resource.data.loc, 80))
+        && (!('act' in request.resource.data) || (request.resource.data.act is map && request.resource.data.act.keys().hasOnly(['t','w','d','h','st','ts']) && request.resource.data.act.h is list && request.resource.data.act.h.size() <= 7));
+    }
+
+    // Gifts between friends
+    match /gifts/{id} {
+      allow create: if canWrite() && (isOwner() || communityOn())
+        && request.resource.data.keys().hasOnly(['fromUid','toUid','item','cost','msg','fromNick','createdAt'])
+        && request.resource.data.fromUid == request.auth.uid
+        && str(request.resource.data.toUid, 128) && request.resource.data.toUid != request.auth.uid && !blocked(request.resource.data.toUid)
+        && str(request.resource.data.item, 40) && num(request.resource.data.cost) && request.resource.data.cost >= 0 && request.resource.data.cost <= 1000
+        && str(request.resource.data.msg, 120) && str(request.resource.data.fromNick, 40)
+        && request.resource.data.createdAt == request.time;
+      allow read: if signedIn() && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+      allow delete: if signedIn() && resource.data.toUid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // Legacy roles are display-only; no role or dev flag grants administration.
+    match /roles/{uid} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /adminIdentity/{id} {
+      allow read: if signedIn() && id == 'owner';
+      allow write: if false; // bootstrap/update in Console (Admin SDK), never from a client
+    }
+    function validModeration(p) {
+      return p.keys().hasOnly(['blocked','tester','nick','actionId'])
+        && p.blocked is bool && p.tester is bool && str(p.nick,40) && str(p.actionId,128);
+    }
+    function validConfig(p) {
+      return p.keys().hasOnly(['features','maintenance','maintenanceText','xpMultiplier','eventDay','announcement','actionId'])
+        && p.features is map && p.features.keys().hasOnly(['shop','community','events'])
+        && p.features.shop is bool && p.features.community is bool && p.features.events is bool
+        && p.maintenance is bool && str(p.maintenanceText,500)
+        && p.xpMultiplier is int && p.xpMultiplier >= 1 && p.xpMultiplier <= 5 && p.eventDay is bool
+        && p.announcement is map && p.announcement.keys().hasOnly(['enabled','text'])
+        && p.announcement.enabled is bool && str(p.announcement.text,500)
+        && (!p.announcement.enabled || p.announcement.text.size() > 0) && str(p.actionId,128);
+    }
+    function validAction(a,id) {
+      return a.keys().hasOnly(['actorUid','targetUid','kind','params','reason','createdMs','createdAt'])
+        && a.actorUid == request.auth.uid && str(a.targetUid,128) && a.targetUid.size()>0
+        && str(a.reason,300) && a.reason.size()>0 && a.createdAt == request.time && num(a.createdMs)
+        && a.params is map && (
+          (a.kind in ['coins','xp'] && a.params.keys().hasOnly(['amount']) && a.params.amount is int
+            && a.params.amount != 0 && a.params.amount >= -100000 && a.params.amount <= 100000)
+          || (a.kind == 'item' && a.params.keys().hasOnly(['item']) && str(a.params.item,80))
+          || (a.kind == 'achievement' && a.params.keys().hasOnly(['achievement']) && str(a.params.achievement,80))
+          || (a.kind == 'freeze' && a.params.keys().size()==0)
+          || (a.kind == 'reset' && a.targetUid != request.auth.uid && a.params.keys().hasOnly(['lesson']) && str(a.params.lesson,80))
+          || (a.kind in ['block','unblock','tester','rename'] && a.targetUid != request.auth.uid
+            && validModeration(a.params) && a.params.actionId==id
+            && (a.kind != 'block' || a.params.blocked==true)
+            && (a.kind != 'unblock' || a.params.blocked==false)
+            && (a.kind != 'rename' || a.params.nick.size()>0))
+          || (a.kind in ['site','announcement'] && a.targetUid=='site' && validConfig(a.params) && a.params.actionId==id)
+        );
+    }
+    function logged(uid,p,kinds) {
+      let a=getAfter(/databases/$(database)/documents/adminActions/$(p.actionId)).data;
+      return a.actorUid==request.auth.uid && a.targetUid==uid && a.kind in kinds
+        && a.createdAt==request.time && a.params==p;
+    }
+    match /adminActions/{id} {
+      allow read: if signedIn() && (isOwner() || resource.data.targetUid==request.auth.uid);
+      allow create: if isOwner() && validAction(request.resource.data,id);
+      allow update, delete: if false; // immutable audit, also immutable for owner
+    }
+    match /moderation/{uid} {
+      allow read: if signedIn(); // only public moderation state; no reasons/emails
+      allow create, update: if isOwner() && uid != request.auth.uid
+        && validModeration(request.resource.data)
+        && logged(uid,request.resource.data,['block','unblock','tester','rename']);
+      allow delete: if false; // unblocking/unmarking must be logged
+    }
+    match /siteConfig/{id} {
+      allow read: if signedIn() && id=='global';
+      allow create, update: if isOwner() && id=='global' && validConfig(request.resource.data)
+        && logged('site',request.resource.data,['site','announcement']);
+      allow delete: if false;
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
