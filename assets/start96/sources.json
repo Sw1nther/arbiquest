@@ -1,0 +1,98 @@
+[
+  {
+    "file": "gmail.webp",
+    "kind": "public screenshot",
+    "source": "https://accounts.google.com/signup?hl=uk",
+    "captured": "2026-11-07",
+    "title": "Створити обліковий запис Google"
+  },
+  {
+    "file": "google-help.webp",
+    "kind": "public screenshot",
+    "source": "https://support.google.com/mail/answer/56256?hl=uk",
+    "captured": "2026-11-07",
+    "title": "Як створити обліковий запис Google для Gmail - Gmail Довідка"
+  },
+  {
+    "file": "facebook.webp",
+    "kind": "public screenshot",
+    "source": "https://www.facebook.com/r.php",
+    "captured": "2026-11-07",
+    "title": "Facebook"
+  },
+  {
+    "file": "business.webp",
+    "kind": "public screenshot",
+    "source": "https://business.facebook.com/",
+    "captured": "2026-11-07",
+    "title": "Увійти в обліковий запис Meta Business Suite"
+  },
+  {
+    "file": "meta-help.webp",
+    "kind": "public screenshot",
+    "source": "https://www.facebook.com/business/help/1710077379203657",
+    "captured": "2026-11-07",
+    "title": "How to create a business portfolio in Meta Business Suite | Meta Business Help Center"
+  },
+  {
+    "file": "page-help.webp",
+    "kind": "public screenshot",
+    "source": "https://www.facebook.com/help/393123551046542",
+    "captured": "2026-11-07",
+    "title": "Створення сторінки у Facebook | Довідковий центр Facebook"
+  },
+  {
+    "file": "currency-help.webp",
+    "kind": "public screenshot",
+    "source": "https://www.facebook.com/business/help/291404291014138",
+    "captured": "2026-11-07",
+    "title": "Change the Currency You Use for Facebook Ads | Meta Business Help Center"
+  },
+  {
+    "file": "pixel-help.webp",
+    "kind": "public screenshot",
+    "source": "https://www.facebook.com/business/help/5270377362999582",
+    "captured": "2026-11-07",
+    "title": "Decide Which Dataset Creation Option Is Right for Your Business | Meta Business Help Center"
+  },
+  {
+    "file": "schema-prepare.webp",
+    "kind": "original schematic illustration",
+    "label": "Схематично; не інтерфейс сервісу"
+  },
+  {
+    "file": "schema-security.webp",
+    "kind": "original schematic illustration",
+    "label": "Схематично; не інтерфейс сервісу"
+  },
+  {
+    "file": "schema-identity.webp",
+    "kind": "original schematic illustration",
+    "label": "Схематично; не інтерфейс сервісу"
+  },
+  {
+    "file": "schema-portfolio.webp",
+    "kind": "original schematic illustration",
+    "label": "Схематично; не інтерфейс сервісу"
+  },
+  {
+    "file": "schema-page.webp",
+    "kind": "original schematic illustration",
+    "label": "Схематично; не інтерфейс сервісу"
+  },
+  {
+    "file": "schema-ads.webp",
+    "kind": "original schematic illustration",
+    "label": "Схематично; не інтерфейс сервісу"
+  },
+  {
+    "file": "schema-pixel.webp",
+    "kind": "original schematic illustration",
+    "label": "Схематично; не інтерфейс сервісу"
+  },
+  {
+    "file": "schema-appeal.webp",
+    "kind": "original schematic illustration",
+    "label": "Схематично; не інтерфейс сервісу"
+  }
+]
