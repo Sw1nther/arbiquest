@@ -1,5 +1,5 @@
 rules_version = '2';
-// ArbiQuest v8.91 — Firestore rules. Paste into Firebase Console → Firestore Database → Rules → Publish.
+// ArbiQuest v8.92 — Firestore rules. Paste into Firebase Console → Firestore Database → Rules → Publish.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
@@ -40,7 +40,7 @@ service cloud.firestore {
       allow read: if signedIn();
       allow delete: if isMe(uid) && canWrite() && (isOwner() || communityOn());
       allow create, update: if isMe(uid) && canWrite() && (isOwner() || communityOn())
-        && request.resource.data.keys().hasOnly(['nick','name','bio','avatar','title','theme','frame','pet','xp','level','coins','lessonsDone','streak','streakMax','active','quizC','quizT','ach','updatedAt','act','loc','lastAction','lastSeen','createdAt'])
+        && request.resource.data.keys().hasOnly(['nick','name','bio','avatar','title','theme','frame','pet','xp','level','coins','lessonsDone','streak','streakMax','active','quizC','quizT','ach','updatedAt','act','loc','lastAction','lastSeen','createdAt','look98'])
         && str(request.resource.data.nick, 40) && request.resource.data.nick.size() > 0
         && str(request.resource.data.name, 40) && str(request.resource.data.bio, 200)
         && str(request.resource.data.avatar, 100000)
@@ -53,6 +53,7 @@ service cloud.firestore {
         && num(request.resource.data.quizC) && num(request.resource.data.quizT)
         && request.resource.data.ach is list && request.resource.data.ach.size() <= 300
         && num(request.resource.data.updatedAt)
+        && (!('look98' in request.resource.data) || (request.resource.data.look98 is map && request.resource.data.look98.keys().hasOnly(['color','bg','badge','stickers']) && request.resource.data.look98.color in ['','berry','ocean','forest','amber','violet'] && request.resource.data.look98.bg in ['','aurora','paper','garden','stars'] && str(request.resource.data.look98.badge,8) && (!('stickers' in request.resource.data.look98) || (request.resource.data.look98.stickers is list && request.resource.data.look98.stickers.size()<=4))))
         && (!('lastAction' in request.resource.data) || str(request.resource.data.lastAction, 100))
         && (!('lastSeen' in request.resource.data) || num(request.resource.data.lastSeen))
         && (!('loc' in request.resource.data) || str(request.resource.data.loc, 80))
@@ -97,6 +98,11 @@ service cloud.firestore {
         && p.announcement.enabled is bool && str(p.announcement.text,500)
         && (!p.announcement.enabled || p.announcement.text.size() > 0) && str(p.actionId,128);
     }
+    function validCatalog(p) {
+      return p.keys().hasOnly(['items','dailyId','dailyDate','dailyDiscount','actionId'])
+        && p.items is list && p.items.size()<=200 && str(p.dailyId,80) && str(p.dailyDate,20)
+        && num(p.dailyDiscount) && p.dailyDiscount>=0 && p.dailyDiscount<=50 && str(p.actionId,128);
+    }
     function validAction(a,id) {
       return a.keys().hasOnly(['actorUid','targetUid','kind','params','reason','createdMs','createdAt'])
         && a.actorUid == request.auth.uid && str(a.targetUid,128) && a.targetUid.size()>0
@@ -113,6 +119,7 @@ service cloud.firestore {
             && (a.kind != 'block' || a.params.blocked==true)
             && (a.kind != 'unblock' || a.params.blocked==false)
             && (a.kind != 'rename' || a.params.nick.size()>0))
+          || (a.kind=='catalog' && a.targetUid=='shop' && validCatalog(a.params) && a.params.actionId==id)
           || (a.kind in ['site','announcement'] && a.targetUid=='site' && validConfig(a.params) && a.params.actionId==id)
         );
     }
@@ -137,6 +144,13 @@ service cloud.firestore {
       allow read: if signedIn() && id=='global';
       allow create, update: if isOwner() && id=='global' && validConfig(request.resource.data)
         && logged('site',request.resource.data,['site','announcement']);
+      allow delete: if false;
+    }
+
+    match /shopCatalog/{id} {
+      allow read: if signedIn() && id=='global';
+      allow create, update: if isOwner() && id=='global' && validCatalog(request.resource.data)
+        && logged('shop',request.resource.data,['catalog']);
       allow delete: if false;
     }
 
